@@ -61,13 +61,18 @@ int main(int argc, char const *argv[])
 		cout << "Error connecting";
 	}
 
-	cout << argv[1];
 	printf("created id %s\n", argv[1]);
-	n = send(sockfd, argv[1], sizeof(argv[1]), 0);
-	if(n < 0){
-		cout << "Error sending";
-	}
+	if(strlen(argv[1]) > 10){
+		cout << "Please choose a smaller ID. Must be max. 10 chars.\n";
+		return 0;
+	} else {
+		n = send(sockfd, argv[1], sizeof(argv[1]), 0);
+		if(n < 0){
+			cout << "Error sending";
+		}
 
+	}
+	
 	if(ret < 0){
 		cout << "connect error \n";
 		exit(0);
@@ -102,8 +107,10 @@ int main(int argc, char const *argv[])
 			 			char* word;
 			 			word = strtok(buffer, " ");
 			 			if(strcmp(word, "subscribe") == 0){
-			 				word = strtok(NULL, "\n");
+			 				word = strtok(NULL, " ");
 			 				printf("Subscribed %s\n", word);
+			 				word = strtok(NULL, "\n");
+			 				printf("Store & forfard? %s\n",word);
 			 			} else if(strcmp(word, "unsubscribe") == 0){
 			 				word = strtok(NULL, "\n");
 			 				printf("Unsubscribed %s\n", word);

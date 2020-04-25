@@ -6,6 +6,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <iostream>
 #include <sstream>
 #include <math.h>
@@ -33,6 +34,7 @@ int main(int argc, char const *argv[])
 	int n, i, ret;
 	socklen_t client_length;
 	socklen_t address_length;
+	int opt;
 
 	
 	
@@ -40,7 +42,9 @@ int main(int argc, char const *argv[])
 	std::map<std::string, int> id_sockfd;
 	std::map<std::string, std::vector<int>> topic_socks;
 	std::map<string, std::vector<std::string>> stored_mess_clients;
+	std::map<int, std::map<std::string, int>>sock_topic_sf;
 	std::vector<string> disconnected_clients;
+
 
 
 	// read file descriptors
@@ -80,6 +84,8 @@ int main(int argc, char const *argv[])
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(portno);
 	server_address.sin_addr.s_addr = INADDR_ANY;
+
+	setsockopt(sockfd_UDP, SOL_SOCKET, TCP_NODELAY, &opt, sizeof(int));
 
 	ret = bind(sockfd, (struct sockaddr*)&server_address, sizeof(struct sockaddr));
 	if(ret < 0){
@@ -197,8 +203,9 @@ int main(int argc, char const *argv[])
 
 				    sprintf(container, "%u", ntohs(client_address.sin_port));
 				    strcat(buffer, inet_ntoa(client_address.sin_addr));
-				    strcat(buffer, ":");
+				    strcat(buffer, " : ");
 				    strcat(buffer, container);
+				    strcat(buffer, " ");
 				    strcat(buffer, message_recieved.topic);
 				    strcat(buffer, " - ");
 
@@ -255,8 +262,14 @@ int main(int argc, char const *argv[])
 				   			for(int j = 0; j <= fd_max; j++){
 				   				if(j != sockfd && j != STDIN_FILENO && j != sockfd_UDP){
 				   					if(std::find(topic_socks[message_recieved.topic].begin(), topic_socks[message_recieved.topic].end(), j) != topic_socks[message_recieved.topic].end()){
+
 				   						if(std::find(disconnected_clients.begin(), disconnected_clients.end(), sockfd_id[j]) != disconnected_clients.end()){
-				   							stored_mess_clients[sockfd_id[j]].push_back(buffer);
+				   							if(sock_topic_sf[j][message_recieved.topic] == 1){
+				   								printf("Salvez mesajul pentru trimis mai incolo...\n");
+				   								strcat(buffer, "\n");
+				   								stored_mess_clients[sockfd_id[j]].push_back(buffer);
+				   							}
+				   							
 				   						} else {
 				   							n = send(j, buffer, strlen(buffer), 0);
 				   						}
@@ -282,6 +295,7 @@ int main(int argc, char const *argv[])
 						close(i);
 						FD_CLR(i, &read_fds);
 
+
 						disconnected_clients.push_back(sockfd_id[i]);
 
 
@@ -291,16 +305,31 @@ int main(int argc, char const *argv[])
 						first_word = strtok(buffer, " ");
 						if(strcmp(first_word, "subscribe") == 0){
 							//recv(i, buffer, 0, BUFLEN);
-							first_word = strtok(NULL, "\n");
+							first_word = strtok(NULL, " ");
 							printf("Recieved topic: %s\n", first_word);
-							//first_word = strtok(NULL, " ");
-
-							// add the recieved topic to the client's list
+							char copy[100];
+							strcpy(copy, first_word);
+							printf("Copy of topic:%s\n",copy);
 							topic_socks[first_word].push_back(i);
 							for(int j = 0; j < topic_socks[first_word].size(); j++){
 								cout << topic_socks[first_word].at(j) << " ";
 							}
 							printf("\n");
+
+
+							first_word = strtok(NULL, "\n");
+							printf("REcieved sf: %s\n", first_word);
+
+
+							sock_topic_sf[i][copy] = atoi(first_word);
+
+							for (auto socket : sock_topic_sf){
+								for(auto topic : socket.second){
+									printf("Client: %d, Topic: %s, SF?: %d\n",socket.first, topic.first.c_str(), topic.second);
+
+								}
+							}
+							
 						} else if (strcmp(first_word, "unsubscribe") == 0){
 
 							first_word = strtok(NULL, "\n");
@@ -308,6 +337,8 @@ int main(int argc, char const *argv[])
 							for(int j = 0; j < topic_socks[first_word].size(); j++){
 								cout << topic_socks[first_word].at(j) << " ";
 							}
+							sock_topic_sf[i].erase(first_word);
+
 							printf("\n");
 						} else {
 							printf("%s\n",buffer);
