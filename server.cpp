@@ -13,6 +13,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <bits/stdc++.h> 
 
 #define BUFLEN 2500
 #define MAXCLIENTS 5
@@ -85,7 +86,7 @@ int main(int argc, char const *argv[])
 	server_address.sin_port = htons(portno);
 	server_address.sin_addr.s_addr = INADDR_ANY;
 
-	setsockopt(sockfd_UDP, SOL_SOCKET, TCP_NODELAY, &opt, sizeof(int));
+	//setsockopt(sockfd_UDP, SOL_SOCKET, TCP_NODELAY, &opt, sizeof(int));
 
 	ret = bind(sockfd, (struct sockaddr*)&server_address, sizeof(struct sockaddr));
 	if(ret < 0){
@@ -173,19 +174,24 @@ int main(int argc, char const *argv[])
 					cin >> buffer;
 					if(strncmp(buffer, "exit", 4) == 0){
 						for(int j = 0; j <= fd_max; j++){
-							if(j != sockfd && j != sockfd_UDP && j != STDIN_FILENO){
-								n = send(j,buffer,strlen(buffer),0);
+							if(FD_ISSET(j, &read_fds)){
+								if(j != sockfd && j != sockfd_UDP && j != STDIN_FILENO){
+									n = send(j,buffer,strlen(buffer),0);
+								}
 							}
+							
 						}
 						close(sockfd);
+
 						close(sockfd_UDP);
+						
 						return 0;
 					}
-					for(int j = 0; j <= fd_max; j++){
-						if(j != sockfd && j != STDIN_FILENO && j != sockfd_UDP){
-							n = send(j, buffer, strlen(buffer), 0);
-						}
-					}
+					// for(int j = 0; j <= fd_max; j++){
+					// 	if(j != sockfd && j != STDIN_FILENO && j != sockfd_UDP){
+					// 		n = send(j, buffer, strlen(buffer), 0);
+					// 	}
+					// }
 					
 				} else if(i == sockfd_UDP){
 					struct msg_udp message_recieved;
@@ -329,15 +335,46 @@ int main(int argc, char const *argv[])
 
 								}
 							}
+							memset(buffer, 0, BUFLEN);
+							sprintf(buffer, "Subscribed to topic ");
+							strcat(buffer, copy);
+							strcat(buffer, "\n");
+							send(i, buffer, BUFLEN, 0);
+
 							
 						} else if (strcmp(first_word, "unsubscribe") == 0){
 
 							first_word = strtok(NULL, "\n");
+
+							int initial_size = topic_socks[first_word].size();
+
 							topic_socks[first_word].erase(std::remove(topic_socks[first_word].begin(), topic_socks[first_word].end(), i), topic_socks[first_word].end());
+							cout << first_word << "inainte";
+							char unsubscribe_topic[50];
+							memset(unsubscribe_topic, 0, 50);
+							strcpy(unsubscribe_topic, first_word);
+							if(topic_socks[first_word].size() < initial_size){
+								memset(buffer, 0, BUFLEN);
+								sprintf(buffer, "Unsubscribed");
+								strcat(buffer, "\n");
+								send(i, buffer, BUFLEN, 0);
+							} else {
+								memset(buffer, 0, BUFLEN);
+								sprintf(buffer, "The topic you chose to unsubscribe from does not exist or you were not subscribed to it!\n");
+								send(i, buffer, BUFLEN, 0);
+							}
+
+
+							
 							for(int j = 0; j < topic_socks[first_word].size(); j++){
 								cout << topic_socks[first_word].at(j) << " ";
 							}
-							sock_topic_sf[i].erase(first_word);
+
+							// unsubscribe the user by setting the SF flag on 0
+							
+							sock_topic_sf[i][unsubscribe_topic] = 0;
+
+							
 
 							printf("\n");
 						} else {
@@ -350,8 +387,5 @@ int main(int argc, char const *argv[])
 			}
 		}
 	
-
-	close(sockfd);
-
 	return 0;
 }

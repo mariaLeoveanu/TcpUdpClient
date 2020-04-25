@@ -25,9 +25,9 @@ int main(int argc, char const *argv[])
 	fd_set read_fds;
 	fd_set temp_fds;
 
-	if(argc < 3){
+	if(argc  != 4){
 		cout << "Usage: ./client <client_id> <address> <port>\n";
-		exit(0);
+		return 0;
 	}
 
 	FD_ZERO(&read_fds);
@@ -95,25 +95,49 @@ int main(int argc, char const *argv[])
 					
 			        fgets(buffer, BUFLEN, stdin);
 			        if(strncmp(buffer, "exit", 4) == 0){
+			        	FD_CLR(sockfd, &read_fds);
+			        	FD_CLR(sockfd, &temp_fds);
+			        	FD_CLR(STDIN_FILENO, &read_fds);
+			        	FD_CLR(STDIN_FILENO, &temp_fds);
+
 			        	close(sockfd);
-						exit(0);
+						return 0;
 
 			 		}
-			 		n = send(sockfd, buffer, strlen(buffer), 0);
+			 		
 			 		if(n < 0){
 			 			cout << "send error";
 			 			exit(0);
 			 		} else {
 			 			char* word;
+			 			char correct_mess[BUFLEN];
+			 			memset(correct_mess, 0, BUFLEN);
+			 			strcpy(correct_mess, buffer);
+
 			 			word = strtok(buffer, " ");
 			 			if(strcmp(word, "subscribe") == 0){
 			 				word = strtok(NULL, " ");
-			 				printf("Subscribed %s\n", word);
 			 				word = strtok(NULL, "\n");
-			 				printf("Store & forfard? %s\n",word);
+			 				if(word != NULL){
+			 					if(atoi(word) != 0 && atoi(word) != 1){
+			 						cout << "Please enter a valid SF flag: 0/1.\n";
+			 					} else {
+
+			 						printf("Store & forfard? %s\n",word);
+			 						n = send(sockfd, correct_mess, strlen(correct_mess), 0);
+			 					}
+			 				
+			 				} else {
+			 					cout << "Please enter a SF flag : 0/1\n";
+			 				}
+			 				
+			 				
 			 			} else if(strcmp(word, "unsubscribe") == 0){
 			 				word = strtok(NULL, "\n");
-			 				printf("Unsubscribed %s\n", word);
+			 				//printf("Unsubscribed %s\n", word);
+			 				n = send(sockfd, correct_mess, strlen(correct_mess), 0);
+			 			} else {
+			 				cout << "Please enter a valid command. \nsubscribe <TOPIC> <SF> \nunsubscribe <TOPIC>\n";
 			 			}
 			 		}
 
@@ -128,7 +152,7 @@ int main(int argc, char const *argv[])
 				}
 				if(strncmp(buffer, "exit", 4) == 0){
 					close(sockfd);
-					exit(0);
+					return 0;
 				}else{
 					printf("%s\n", buffer);
 					memset(buffer, 0, BUFLEN);
