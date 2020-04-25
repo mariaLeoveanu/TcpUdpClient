@@ -151,14 +151,16 @@ int main(int argc, char const *argv[])
 					// << ":" << ntohs(client_address.sin_port) << ".\n";	
 					printf("New client %s connected from %s : %u.\n",new_id,inet_ntoa(client_address.sin_addr),ntohs(client_address.sin_port));
 
-					// if(std::find(disconnected_clients.begin(), disconnected_clients.end(), new_id) != disconnected_clients.end()){
+					if(std::find(disconnected_clients.begin(), disconnected_clients.end(), new_id) != disconnected_clients.end()){
+						printf("Sending stored messages ... \n");
 						
-					// 	for(int j = 0; j < stored_mess_clients[new_id].size(); j++){
+						for(int j = 0; j < stored_mess_clients[new_id].size(); j++){
 						
-					// 		send(newsockfd, stored_mess_clients[new_id].at(j).c_str(), strlen(stored_mess_clients[new_id].at(j).c_str()), 0);
-					// 	}
-					// 	disconnected_clients.erase(std::remove(disconnected_clients.begin(), disconnected_clients.end(), new_id), disconnected_clients.end());
-					// }							
+							send(newsockfd, stored_mess_clients[new_id].at(j).c_str(), strlen(stored_mess_clients[new_id].at(j).c_str()), 0);
+						}
+						disconnected_clients.erase(std::remove(disconnected_clients.begin(), disconnected_clients.end(), new_id), disconnected_clients.end());
+						stored_mess_clients.erase(new_id);
+					}							
 
 				} else if(i == STDIN_FILENO){
 			  		memset(buffer, 0, BUFLEN);
@@ -253,11 +255,11 @@ int main(int argc, char const *argv[])
 				   			for(int j = 0; j <= fd_max; j++){
 				   				if(j != sockfd && j != STDIN_FILENO && j != sockfd_UDP){
 				   					if(std::find(topic_socks[message_recieved.topic].begin(), topic_socks[message_recieved.topic].end(), j) != topic_socks[message_recieved.topic].end()){
-				   						//if(std::find(disconnected_clients.begin(), disconnected_clients.end(), sockfd_id[j]) != disconnected_clients.end()){
-				   							//stored_mess_clients[sockfd_id[j]].push_back(buffer);
-				   						//} else {
+				   						if(std::find(disconnected_clients.begin(), disconnected_clients.end(), sockfd_id[j]) != disconnected_clients.end()){
+				   							stored_mess_clients[sockfd_id[j]].push_back(buffer);
+				   						} else {
 				   							n = send(j, buffer, strlen(buffer), 0);
-				   						//}
+				   						}
 				   						
 				   					}
 				   					
@@ -280,7 +282,7 @@ int main(int argc, char const *argv[])
 						close(i);
 						FD_CLR(i, &read_fds);
 
-						//disconnected_clients.push_back(sockfd_id[i]);
+						disconnected_clients.push_back(sockfd_id[i]);
 
 
 					} else {
@@ -310,14 +312,8 @@ int main(int argc, char const *argv[])
 						} else {
 							printf("%s\n",buffer);
 						}
-						
-
-
-
 					}
-					
-					
-		
+
 					}
 				}
 			}
