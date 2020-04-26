@@ -88,7 +88,6 @@ int main(int argc, char const *argv[])
 		return 0;
 	}
 
-	
 	bind(sockfd_UDP, (struct sockaddr*)&server_address, sizeof (struct sockaddr));
 
 	ret = listen(sockfd, MAXCLIENTS);
@@ -193,6 +192,7 @@ int main(int argc, char const *argv[])
 				    memset(container, 0, BUFLEN);
 
 					address_length = sizeof(client_address);
+					memset(&message_recieved, 0, sizeof(message_recieved));
 					recvfrom(sockfd_UDP, (char*)&message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&client_address, &address_length);
 				    
 				    sprintf(container, "%u", ntohs(client_address.sin_port));
@@ -201,7 +201,6 @@ int main(int argc, char const *argv[])
 				    strcat(buffer, container);
 				    strcat(buffer, " ");
 				    strcat(buffer, message_recieved.topic);
-				    strcat(buffer, " - ");
 
 				    memset(container, 0, BUFLEN);
 
@@ -219,6 +218,8 @@ int main(int argc, char const *argv[])
 				    	}else {
 				    		sprintf(container, "%d", number);
 				    	}
+
+				    	strcat(buffer, " - INT - ");
 				    	strcat(buffer, container);
 
 				    } else if(message_recieved.type == 1){
@@ -233,6 +234,7 @@ int main(int argc, char const *argv[])
 				    	fl_number = (float)number/(float)100;
 
 				    	sprintf(container, "%.2f", fl_number);
+				    	strcat(buffer, " - SHORT_REAL - ");
 				    	strcat(buffer, container);
 				    	
 				    } else if(message_recieved.type == 2){
@@ -256,11 +258,13 @@ int main(int argc, char const *argv[])
 				    	}
 
 				    	sprintf(container, "%lf", result);
+				    	strcat(buffer, " - FLOAT - ");
 				    	strcat(buffer, container);
 
 				    } else if(message_recieved.type == 3){
 
 				    	// string 
+				    	strcat(buffer, " - STRING - ");
 				    	strcat(buffer, message_recieved.payload);
 
 				    }

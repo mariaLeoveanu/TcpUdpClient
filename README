@@ -1,0 +1,75 @@
+ 	+-+-+-+ +-+-+-+ +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 	|T|C|P| |U|D|P| |C|l|i|e|n|t|-|S|e|r|v|e|r|
+ 	+-+-+-+ +-+-+-+ +-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+Name: Maria-Alexandra Leoveanu
+Group: 323CA
+
+Code structure:
+
+      
+      
+█████╗	server.cpp
+╚════╝
+
+The majotity of the progam logic is implemented in server.cpp. For the TCP and UDP communication I followed the code from the lab. Firstly the server opens sockets for TCP and UDP communication. Then, in an infinite loop, it performs a diffrent action based on where it gets the input from.
+To keep track of all connected clients and the information stored about them, I chose the following structures.
+	
+	== map sockfd_id : stores a correspondence between socket and client ID, which I used when I needed the client ID and only had the socket.
+
+	== map id_sockfd : similar to sockfd_id.
+
+	== map topic_socks : stores for each topic all the sockets that are subscribed. The sockets are stored in a vector.
+
+	== map stored_mess_clients : for each client ID (because the socket can change after reconnecting), store in a vector all the messages that have to be sent to the client when it reconnects. 
+
+	== map sock_tocpic_sf : for each socket, store information about Store & Forward : this map has as key a socket and as value another map with topics as keys and SF flags as values. When a client disconnects, if the flag was set on 1, all the messages for that topic are stored in stored_mess_clients.
+
+	== disconnected_clients : vector in which I add the ID of each disconnected client. This vector is accessed before deciding if the message recieved from UDP should be sent / stored / ignored. 
+
+In the infinite loop, there are four main cases:
+	
+	== if the server recieves a connection request, recieve the client ID and then update the maps that keep track of socket <-> ID correspondence. Then, check if the new client has been connected before, and if this is true, send all stored messages and delete its info from disconnected_clients and stored_mess_clients.
+
+	== if the server recieves input from stdin, send the exit signal to each TCP client and then close the sockets for UDP and TCP.
+
+	== if the server recieves a message from the UDP publisher, start parsing the recieved message. For this i used a structure that has 3 fields: topic, type and payload, eah set to its maximum capacity as suggested in the task requirements. Before parsing the actual message, I created the header, in buffer, which is identical for every data type. Then to that buffer I append for each case the parsed data.
+
+		== int data : skip the sign (payload + 1) and copy the content in uint32_t. Then, analyze the sign flag and update the value when adding the number to the buffer. 
+
+		== short real data : similar to int data, but modify the recieved value (divide it by 100) and store the result in float. 
+
+		== float data : extract the base in an uint32_t, the exponent in uint8_t and compute the result and store it in a float variable. To extract the base and exponent, I had to take into consideration the sign flag, and memcpy the content after that flag. This is why memcpy for number and power have a  (+1) for starting pointer. 
+
+		== string data : the most straightforward, just append the payload to the rest of the message. 
+
+	After the message is parsed, go through all file descriptors, and if the current fd is a client, first check if it is subscribed to the topic. If it is, then check its status (online/offline). If the user is online, send the message, and if it is offline, save the buffer content in stored_mess_clients only if the flag is set on 1.
+
+	== finally, if the server recieves a subscribe / unsubscribe command from a connected client
+
+		== subscribe command : extract the topic, and add it to the vector of topics. Then, extract the SF flag, and add it to sock_topic_sf with the rest of the information. I chose to send a confirmation of subscription from the server, after that topic was added to the list. 
+
+		== unsubscribe command : extract the topic, and store the initial size of the map. If after erasing, the size doesn't change, send a message to the client announcing it that it wasn't subscribed to that topic. If the size decreases, then the client unsubscribed sucsessfully and the confirmation is sent accordingly. 
+
+      
+█████╗	subscriber.cpp
+╚════╝
+
+After creating the connection, the subscriber enters in an infinite loop in wich it can take input from either server or stdin. If the user writes input at
+stdin, the input is checked to see if the parameters are given correctly. 
+The command taken from the user is sent only if the parameters are set correctly. 
+
+If the client recieves a message from the server, first, it checks if that message is exit, and if it is, it closes the socket and it exits the loop. Otherwise, it displays the message recieved, 
+
+
+
+      
+      
+      
+
+
+
+
+
+
+
