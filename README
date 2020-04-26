@@ -62,14 +62,6 @@ The command taken from the user is sent only if the parameters are set correctly
 If the client recieves a message from the server, first, it checks if that message is exit, and if it is, it closes the socket and it exits the loop. Otherwise, it displays the message recieved, 
 
 
-
-      
-      
-      
-
-
-
-
-
-
-
+To test the code :
+>> make build
+>> ./server <PORT>			>> ./subscriber Client_ID 127.0.0.1 <PORT>
